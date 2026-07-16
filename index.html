@@ -18,6 +18,7 @@
     --seven-orange: #EE7203;
     --lawson-blue: #0056A8;
     --family-green: #00A650;
+    --omakase-purple: #7C4DBE;
     --advice-bg: rgba(43,122,75,0.08);
   }
   *{ box-sizing: border-box; }
@@ -47,10 +48,10 @@
     border-radius: 14px; padding: 14px; margin-bottom: 20px;
   }
   .field-label{ font-size:11px; color:var(--ink-soft); margin: 0 2px 6px; letter-spacing:0.03em; }
-  .row{ display:flex; gap:8px; margin-bottom: 12px; }
+  .row{ display:flex; gap:8px; margin-bottom: 12px; flex-wrap: wrap; }
   .row:last-child{ margin-bottom:0; }
   .choice-btn{
-    flex:1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid var(--brand);
+    flex:1; min-width: calc(33% - 8px); padding: 9px 4px; border-radius: 10px; border: 1.5px solid var(--brand);
     background: white; color: var(--brand); font-family:'Zen Maru Gothic', sans-serif;
     font-weight:700; font-size: 12.5px; cursor:pointer; transition: all .15s ease;
   }
@@ -61,6 +62,19 @@
   .choice-btn.store-lawson.active{ background: var(--lawson-blue); color:white; }
   .choice-btn.store-family{ border-color: var(--family-green); color: var(--family-green); }
   .choice-btn.store-family.active{ background: var(--family-green); color:white; }
+  .choice-btn.store-omakase{ border-color: var(--omakase-purple); color: var(--omakase-purple); }
+  .choice-btn.store-omakase.active{ background: var(--omakase-purple); color:white; }
+  .choice-btn.store-other{ border-color: var(--ink-soft); color: var(--ink-soft); }
+  .choice-btn.store-other.active{ background: var(--ink-soft); color:white; }
+
+  .free-store-wrap{ display:none; margin-bottom:12px; }
+  .free-store-wrap.open{ display:block; }
+  .free-store-wrap input{
+    width:100%; border:1.5px solid var(--line); border-radius:10px; padding: 9px 12px;
+    font-size:13.5px; font-family:'Noto Sans JP', sans-serif; outline:none; background:white;
+  }
+  .free-store-wrap input:focus{ border-color: var(--brand); }
+  .free-store-hint{ font-size:10.5px; color:var(--ink-soft); margin: 4px 2px 0; }
 
   .budget-wrap{
     display:flex; align-items:center; flex:1; background:white;
@@ -71,6 +85,13 @@
     border:none; outline:none; width:100%; font-family:'JetBrains Mono', monospace;
     font-size:15px; font-weight:700; color:var(--ink); background:transparent;
   }
+  .mood-btn{
+    flex:1; min-width: calc(25% - 8px); padding: 8px 2px; border-radius: 10px; border: 1.5px solid var(--line);
+    background: white; color: var(--ink-soft); font-size: 11.5px; cursor:pointer; transition: all .15s ease;
+    font-family:'Noto Sans JP', sans-serif;
+  }
+  .mood-btn.active{ border-color: var(--brand); background: var(--advice-bg); color: var(--brand); font-weight:700; }
+
   .daily-target-toggle{
     font-size:11px; color:var(--brand); text-decoration:underline; cursor:pointer;
     text-align:right; margin: -4px 2px 10px;
@@ -82,6 +103,11 @@
     font-family:'JetBrains Mono', monospace; padding: 2px 4px 10px;
   }
   .macro-preview b{ color:var(--ink); }
+  .today-budget-bar{
+    font-size:11px; color:var(--ink-soft); font-family:'JetBrains Mono', monospace;
+    padding: 0 4px 10px;
+  }
+  .today-budget-bar b{ color:var(--ink); }
   .generate-btn{
     width:100%; padding: 13px; border-radius: 10px; border: none;
     background: var(--brand); color:white; font-family:'Zen Maru Gothic', sans-serif;
@@ -104,13 +130,10 @@
     background: var(--paper); padding: 22px 20px 18px; font-family:'JetBrains Mono', monospace;
     box-shadow: 0 10px 24px rgba(0,0,0,0.12); position:relative;
   }
-  .receipt-band{ height: 6px; margin: -22px -20px 14px; }
-  .receipt-band.s7{ background: repeating-linear-gradient(to right, var(--seven-orange) 0 12px, white 12px 16px, #2E9E4F 16px 28px, white 28px 32px, #E60012 32px 44px, white 44px 48px); }
-  .receipt-band.sL{ background: repeating-linear-gradient(to right, var(--lawson-blue) 0 10px, white 10px 14px, #6FC6E8 14px 24px, white 24px 28px); }
-  .receipt-band.sF{ background: repeating-linear-gradient(to right, var(--family-green) 0 10px, white 10px 14px, var(--lawson-blue) 14px 24px, white 24px 28px); }
+  .receipt-band{ height: 6px; margin: -22px -20px 14px; background: repeating-linear-gradient(to right, var(--brand) 0 10px, white 10px 14px, #7FD1A0 14px 24px, white 24px 28px); }
   .r-store{
     text-align:center; font-family:'Zen Maru Gothic', sans-serif; font-weight:900;
-    font-size: 18px; margin-bottom: 2px;
+    font-size: 18px; margin-bottom: 2px; color: var(--brand);
   }
   .r-meta{ text-align:center; font-size: 10.5px; color: var(--ink-soft); margin-bottom: 12px; line-height:1.6; }
   .r-day{
@@ -140,15 +163,21 @@
     display:flex; justify-content:space-between; align-items:center; font-size: 17px; font-weight:700;
     border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 8px 0; margin: 12px 0 10px;
   }
+  .r-tip{
+    font-family:'Noto Sans JP',sans-serif; font-size:12px; line-height:1.6;
+    background:rgba(0,0,0,0.03); border-radius:8px; padding:10px 12px;
+  }
   .advice-box{
     background: var(--advice-bg); border-radius: 8px; padding: 12px 13px;
     font-family:'Noto Sans JP', sans-serif; font-size: 12.5px; line-height:1.7; color: var(--ink); margin-top: 10px;
   }
   .advice-box .advice-head{ font-weight:700; color: var(--brand); margin-bottom:4px; display:block; }
-  .today-progress{
-    font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-soft);
-    margin-top:8px; line-height:1.7;
+  .copy-btn{
+    width:100%; margin-top:12px; padding:10px; border-radius:8px; border:1.5px dashed var(--ink-soft);
+    background:transparent; color:var(--ink-soft); font-size:12px; cursor:pointer;
+    font-family:'Noto Sans JP', sans-serif;
   }
+  .copy-btn:active{ background: rgba(0,0,0,0.04); }
   .barcode{
     height: 34px; margin: 16px 0 6px;
     background: repeating-linear-gradient(
@@ -184,7 +213,7 @@
 </head>
 <body>
 <div class="stage">
-  <p class="app-title">CONVENI MEAL BALANCER</p>
+  <p class="app-title">MEAL BALANCER</p>
   <p class="app-sub">お店・時間帯・予算を選んで1食を発行。残りの食事のバランスも提案します</p>
 
   <div id="configWarning" class="config-warning" style="display:none;">
@@ -192,11 +221,17 @@
   </div>
 
   <div class="controls">
-    <p class="field-label">コンビニ</p>
+    <p class="field-label">お店</p>
     <div class="row" id="storeRow">
       <button class="choice-btn store-seven active" data-store="セブン-イレブン">セブン</button>
       <button class="choice-btn store-lawson" data-store="ローソン">ローソン</button>
       <button class="choice-btn store-family" data-store="ファミリーマート">ファミマ</button>
+      <button class="choice-btn store-omakase" data-store="__omakase__">おまかせ</button>
+      <button class="choice-btn store-other" data-store="__other__">その他</button>
+    </div>
+    <div class="free-store-wrap" id="freeStoreWrap">
+      <input type="text" id="freeStoreInput" placeholder="例: 松屋、すき家、サイゼリヤ、まいばすけっと など">
+      <p class="free-store-hint">コンビニ以外のチェーン店やスーパーもOKです</p>
     </div>
 
     <p class="field-label">時間帯</p>
@@ -204,6 +239,14 @@
       <button class="choice-btn active" data-slot="朝食">朝食</button>
       <button class="choice-btn" data-slot="昼食">昼食</button>
       <button class="choice-btn" data-slot="夕食">夕食</button>
+    </div>
+
+    <p class="field-label">気分(任意)</p>
+    <div class="row" id="moodRow">
+      <button class="mood-btn" data-mood="さっぱりしたもの">さっぱり</button>
+      <button class="mood-btn" data-mood="がっつり食べたい">がっつり</button>
+      <button class="mood-btn" data-mood="温かいもの">温かいもの</button>
+      <button class="mood-btn" data-mood="麺類の気分">麺類</button>
     </div>
 
     <p class="field-label">予算</p>
@@ -225,6 +268,14 @@
         </div>
       </div>
       <div class="macro-preview" id="macroPreview"></div>
+      <div class="row">
+        <div class="budget-wrap">
+          <span>1日の予算上限(任意)</span>
+          <input type="number" id="dailyBudgetInput" value="1500" min="0" step="50">
+          <span>円</span>
+        </div>
+      </div>
+      <div class="today-budget-bar" id="todayBudgetBar"></div>
     </div>
 
     <div class="row">
@@ -255,26 +306,31 @@ const PROFILE = {
   ban: "白米は禁止(玄米・もち麦入りはOK)"
 };
 
-// 固定PFC比率(たんぱく質20% / 脂質25% / 炭水化物55%)
 const RATIO = { protein: 0.20, fat: 0.25, carb: 0.55 };
 const MEAL_SLOTS = ["朝食", "昼食", "夕食"];
 
 let selectedStore = "セブン-イレブン";
 let selectedSlot = "朝食";
-let todayLog = { date: "", meals: {} }; // { 朝食: entry|undefined, 昼食: ..., 夕食: ... }
+let selectedMood = null;
+let todayLog = { date: "", meals: {} };
 
 const outputEl = document.getElementById('output');
 const historyStackEl = document.getElementById('historyStack');
 const genBtn = document.getElementById('genBtn');
 const kcalInput = document.getElementById('kcalInput');
 const priceInput = document.getElementById('priceInput');
+const dailyBudgetInput = document.getElementById('dailyBudgetInput');
 const storeRow = document.getElementById('storeRow');
 const slotRow = document.getElementById('slotRow');
+const moodRow = document.getElementById('moodRow');
 const clearBtn = document.getElementById('clearBtn');
 const configWarningEl = document.getElementById('configWarning');
 const macroPreviewEl = document.getElementById('macroPreview');
 const targetToggle = document.getElementById('targetToggle');
 const targetBox = document.getElementById('targetBox');
+const freeStoreWrap = document.getElementById('freeStoreWrap');
+const freeStoreInput = document.getElementById('freeStoreInput');
+const todayBudgetBar = document.getElementById('todayBudgetBar');
 
 if (!WORKER_URL || WORKER_URL.indexOf('http') !== 0) {
   configWarningEl.style.display = 'block';
@@ -291,6 +347,7 @@ storeRow.addEventListener('click', (e) => {
   [...storeRow.children].forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   selectedStore = btn.dataset.store;
+  freeStoreWrap.classList.toggle('open', selectedStore === '__other__');
 });
 
 slotRow.addEventListener('click', (e) => {
@@ -299,6 +356,19 @@ slotRow.addEventListener('click', (e) => {
   [...slotRow.children].forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   selectedSlot = btn.dataset.slot;
+});
+
+moodRow.addEventListener('click', (e) => {
+  const btn = e.target.closest('.mood-btn');
+  if(!btn) return;
+  const wasActive = btn.classList.contains('active');
+  [...moodRow.children].forEach(b => b.classList.remove('active'));
+  if(!wasActive){
+    btn.classList.add('active');
+    selectedMood = btn.dataset.mood;
+  }else{
+    selectedMood = null;
+  }
 });
 
 function computeTargets(kcal){
@@ -314,9 +384,18 @@ function renderMacroPreview(){
   const kcal = parseInt(kcalInput.value, 10) || 1700;
   const t = computeTargets(kcal);
   macroPreviewEl.innerHTML = `1日の目標内訳: P<b>${t.protein}g</b> / F<b>${t.fat}g</b> / C<b>${t.carb}g</b>`;
+  renderTodayBudget();
 }
 kcalInput.addEventListener('input', renderMacroPreview);
-renderMacroPreview();
+dailyBudgetInput.addEventListener('input', renderTodayBudget);
+
+function renderTodayBudget(){
+  const dailyBudget = parseInt(dailyBudgetInput.value, 10) || 0;
+  if(!dailyBudget){ todayBudgetBar.innerHTML = ''; return; }
+  const spent = sumTodayMacros(null).price;
+  const left = dailyBudget - spent;
+  todayBudgetBar.innerHTML = `本日の使用額: <b>¥${spent}</b> / ¥${dailyBudget}(残り <b>¥${Math.max(left,0)}</b>)`;
+}
 
 function todayStr(){
   const d = new Date();
@@ -336,6 +415,7 @@ function loadTodayLog(){
     todayLog = { date: todayStr(), meals: {} };
   }
   renderHistory();
+  renderMacroPreview();
 }
 
 function saveTodayLog(){
@@ -371,6 +451,9 @@ function renderHistory(){
 function extractJson(text){
   let t = text.trim();
   t = t.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+  const start = t.indexOf('{');
+  const end = t.lastIndexOf('}');
+  if(start >= 0 && end > start){ t = t.slice(start, end + 1); }
   return JSON.parse(t);
 }
 
@@ -391,7 +474,7 @@ function sumTodayMacros(excludeSlot){
 }
 
 function buildAdvice(targets, mealSlot){
-  const consumed = sumTodayMacros(null); // 今回生成した分も含めた本日合計
+  const consumed = sumTodayMacros(null);
   const remaining = {
     kcal: targets.kcal - consumed.kcal,
     protein: targets.protein - consumed.protein,
@@ -407,7 +490,6 @@ function buildAdvice(targets, mealSlot){
   let headline, body;
 
   if(remainingSlots.length === 0){
-    // 3食すべて記録済み
     if(remaining.kcal < -100){
       headline = '本日は目標を少しオーバーしています';
       body = `カロリーが目標より約${Math.abs(Math.round(remaining.kcal))}kcal多めです。明日は少し軽めを意識するとバランスが取れます。`;
@@ -428,7 +510,7 @@ function buildAdvice(targets, mealSlot){
       body = `残りのカロリー枠が少ないです(目安 約${Math.max(Math.round(remaining.kcal),0)}kcal)。サラダやスープなど軽いメニューを意識しましょう。`;
     }else if(proteinShare > RATIO.protein + 0.06){
       headline = `${nextLabel}はタンパク質多めを意識`;
-      body = `残りのタンパク質目安は約${Math.max(Math.round(remaining.protein),0)}gです。サラダチキンやゆで卵、豆腐など高タンパクなメニューを選びましょう。`;
+      body = `残りのタンパク質目安は約${Math.max(Math.round(remaining.protein),0)}gです。サラダチキンやゆで卵、豆腐、赤身の肉・魚など高タンパクなメニューを選びましょう。`;
     }else if(fatShare > RATIO.fat + 0.06){
       headline = `${nextLabel}は脂質控えめを意識`;
       body = `残りの脂質目安は約${Math.max(Math.round(remaining.fat),0)}gです。揚げ物やマヨネーズ系は控えて、あっさりしたメニューがおすすめです。`;
@@ -438,12 +520,29 @@ function buildAdvice(targets, mealSlot){
     }
   }
 
-  return { headline, body, remaining, consumed };
+  return { headline, body };
+}
+
+function resolveStore(){
+  if(selectedStore === '__other__'){
+    const v = freeStoreInput.value.trim();
+    return v || null;
+  }
+  if(selectedStore === '__omakase__'){
+    return '__omakase__';
+  }
+  return selectedStore;
 }
 
 async function generatePlan(){
   if (!WORKER_URL || WORKER_URL.indexOf('http') !== 0) {
     configWarningEl.style.display = 'block';
+    return;
+  }
+
+  const store = resolveStore();
+  if(store === null){
+    outputEl.innerHTML = `<div class="error-state">「その他」を選んだ場合は、お店の名前を入力してください。</div>`;
     return;
   }
 
@@ -454,9 +553,16 @@ async function generatePlan(){
   outputEl.innerHTML = `<div class="loading">レシート印字中<span class="dots-anim"><span>.</span><span>.</span><span>.</span></span></div>`;
 
   const consumedSoFar = sumTodayMacros(selectedSlot);
-  const remainingKcalForThisMeal = Math.max(targets.kcal - consumedSoFar.kcal, 300);
+  const remainingKcal = Math.max(targets.kcal - consumedSoFar.kcal, 300);
 
-  const prompt = `あなたは「${selectedStore}」の商品だけを使って、ダイエット中の人のための1食分の食事プランを提案する栄養アドバイザーです。
+  const isOmakase = store === '__omakase__';
+  const storeInstruction = isOmakase
+    ? `- 店舗: あなたが選んでください。日本全国に店舗が多いチェーン(コンビニ3社、松屋、すき家、吉野家、やよい軒、大戸屋、サイゼリヤ、ガスト、はなまるうどん、いきなりステーキ、Subwayなど)の中から、この時間帯・予算・PFC目標に一番合うお店を1つ選び、"store"フィールドにその店名を入れること`
+    : `- 店舗: ${store}(この店の実在しそうな商品・メニューのみを使う。他店のものは使わない)`;
+
+  const moodInstruction = selectedMood ? `\n- 気分: ${selectedMood}(この気分に合うメニューを優先する)` : '';
+
+  const prompt = `あなたは日本の飲食チェーン・コンビニのメニューに詳しい栄養アドバイザーです。ダイエット中の人のための1食分の食事プランを提案してください。
 
 【ユーザー情報】
 - ${PROFILE.age}歳男性、身長${PROFILE.heightCm}cm、体重${PROFILE.weightKg}kg、${PROFILE.goal}
@@ -464,15 +570,18 @@ async function generatePlan(){
 - 1日の目標: 摂取カロリー約${targets.kcal}kcal、タンパク質約${targets.protein}g、脂質約${targets.fat}g、炭水化物約${targets.carb}g(PFC比 20/25/55%)
 
 【今回の条件】
-- 店舗: ${selectedStore}(この店の実在しそうな商品のみを使う。他店の商品は使わない)
-- 食事タイミング: ${selectedSlot}
+${storeInstruction}
+- 食事タイミング: ${selectedSlot}${moodInstruction}
 - 予算: ${priceLimit}円以内(必ず守る)
-- この食事の目安カロリー: 1日の残り目安を踏まえて${Math.round(remainingKcalForThisMeal / (selectedSlot === '夕食' ? 1 : 2.2))}kcal前後を目安にするが、予算内で無理なく組める範囲でよい
-- 高タンパクを意識し、白米は使わない
+- この食事の目安カロリー: 1日の残り目安を踏まえて${Math.round(remainingKcal / (selectedSlot === '夕食' ? 1 : 2.2))}kcal前後を目安にするが、予算内で無理なく組める範囲でよい
+- 高タンパクを意識し、白米は使わない(定食チェーンの場合はご飯を玄米・もち麦に変更できる店ならその選択を明記、できない店ならご飯少なめ・ご飯抜きなどの工夫を提案)
+- 価格は思い出しで概算せず、可能な範囲でWeb検索して実際の相場に近い金額を確認してから使うこと(それでも多少のズレは許容範囲とする)
 
 以下のJSON形式のみで回答してください。前置き・説明・Markdown装飾は一切不要です。
 
 {
+  "store": "店名",
+  "storeReason": "おまかせの場合のみ、この店を選んだ理由を20字程度で。指定された場合は空文字",
   "items": [{"name":"商品名","price":数値,"calories":数値,"protein":数値,"fat":数値,"carbs":数値}],
   "totalPrice": 数値,
   "totalCalories": 数値,
@@ -486,7 +595,7 @@ async function generatePlan(){
     const response = await fetch(WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, maxTokens: 1000 })
+      body: JSON.stringify({ prompt, maxTokens: 1200 })
     });
 
     const data = await response.json();
@@ -495,8 +604,10 @@ async function generatePlan(){
     const plan = extractJson(data.text);
 
     const entry = {
-      store: selectedStore,
+      store: plan.store || (isOmakase ? 'おまかせ' : store),
+      storeReason: plan.storeReason || '',
       mealSlot: selectedSlot,
+      mood: selectedMood,
       date: new Date().toLocaleDateString('ja-JP', { month:'2-digit', day:'2-digit', weekday:'short' }),
       time: new Date().toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' }),
       items: plan.items,
@@ -516,6 +627,7 @@ async function generatePlan(){
 
     renderReceipt(entry, selectedSlot);
     renderHistory();
+    renderTodayBudget();
   }catch(err){
     console.error(err);
     const detail = (err && err.message) ? err.message : String(err);
@@ -525,34 +637,24 @@ async function generatePlan(){
   }
 }
 
-function storeBandClass(store){
-  if(store.includes('セブン')) return 's7';
-  if(store.includes('ローソン')) return 'sL';
-  if(store.includes('ファミ')) return 'sF';
-  return 's7';
-}
-function storeColor(store){
-  if(store.includes('セブン')) return '#EE7203';
-  if(store.includes('ローソン')) return '#0056A8';
-  if(store.includes('ファミ')) return '#00A650';
-  return '#212A33';
-}
-
 function renderReceipt(entry, mealSlot){
   const under = entry.totalPrice <= entry.priceLimit;
   const advice = buildAdvice(entry.dailyTargets, mealSlot);
+  const reasonHtml = entry.storeReason
+    ? `<div class="r-meta" style="margin-top:-6px;">🏪 ${entry.storeReason}</div>` : '';
 
   outputEl.innerHTML = `
     <div class="receipt-wrap">
       <div class="zigzag-top"></div>
       <div class="receipt">
-        <div class="receipt-band ${storeBandClass(entry.store)}"></div>
+        <div class="receipt-band"></div>
         ${under ? `<div class="stamp">予算内 OK</div>` : ''}
-        <div class="r-store" style="color:${storeColor(entry.store)}">${entry.store}</div>
+        <div class="r-store">${entry.store}</div>
         <div class="r-meta">
           ${entry.date} ${entry.time} 発行<br>
-          <span class="r-day">${mealSlot}</span>
+          <span class="r-day">${mealSlot}</span>${entry.mood ? ` <span class="r-day">${entry.mood}</span>` : ''}
         </div>
+        ${reasonHtml}
         <hr class="r-divider">
         ${entry.items.map(i => `
           <div class="r-item">
@@ -568,25 +670,41 @@ function renderReceipt(entry, mealSlot){
           <div class="pfc-item"><div class="val">${entry.totalCarbs}g</div><div class="lbl">C 炭水化物</div></div>
         </div>
         <div class="r-total"><span>合計金額</span><span>¥${entry.totalPrice}</span></div>
-        <div class="r-tip" style="font-family:'Noto Sans JP',sans-serif;font-size:12px;line-height:1.6;background:rgba(0,0,0,0.03);border-radius:8px;padding:10px 12px;">
-          <b>この食事について:</b> ${entry.tip}
-        </div>
+        <div class="r-tip"><b>この食事について:</b> ${entry.tip}</div>
         <div class="advice-box">
           <span class="advice-head">${advice.headline}</span>
           ${advice.body}
         </div>
+        <button class="copy-btn" id="copyBtn">📋 買い物リストをコピー</button>
         <div class="barcode"></div>
         <div class="r-thanks">ありがとうございました またお越しください</div>
       </div>
       <div class="zigzag-bottom"></div>
     </div>
   `;
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const list = `【${entry.store} / ${mealSlot}】\n` +
+      entry.items.map(i => `・${i.name} ¥${i.price}`).join('\n') +
+      `\n合計 ¥${entry.totalPrice}(${entry.totalCalories}kcal / P${entry.totalProtein}g F${entry.totalFat}g C${entry.totalCarbs}g)`;
+    try{
+      await navigator.clipboard.writeText(list);
+      document.getElementById('copyBtn').textContent = '✅ コピーしました';
+      setTimeout(() => {
+        const b = document.getElementById('copyBtn');
+        if(b) b.textContent = '📋 買い物リストをコピー';
+      }, 2000);
+    }catch(e){
+      alert('コピーに失敗しました');
+    }
+  });
 }
 
 clearBtn.addEventListener('click', () => {
   todayLog = { date: todayStr(), meals: {} };
   saveTodayLog();
   renderHistory();
+  renderTodayBudget();
   outputEl.innerHTML = `<div class="empty-state">お店・時間帯・予算を選んで<br>「この食事を発行する」を押してください。</div>`;
 });
 
