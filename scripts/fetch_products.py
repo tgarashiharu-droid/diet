@@ -226,12 +226,43 @@ def parse_list_page(html: str, store_key: str, page_url: str) -> list[dict]:
     return [e for e in found.values() if e["name"]]
 
 
+NUTRIENT_HEADERS = {
+    "calories": re.compile(r"熱量|エネルギー"),
+    "protein": re.compile(r"たんぱく|蛋白|タンパク"),
+    "fat": re.compile(r"脂質"),
+    "carbs": re.compile(r"炭水化物"),
+}
+
+
+def parse_nutrition_table(soup) -> dict:
+    """見出し行(熱量(kcal)・たんぱく質(g)…)の次の行に数値が並ぶ表(ファミマ形式)を読む。"""
+    out = {}
+    for table in soup.find_all("table"):
+        rows = [[clean_text(c.get_text(" ")) for c in tr.find_all(["th", "td"])] for tr in table.find_all("tr")]
+        for head, values in zip(rows, rows[1:]):
+            for i, label in enumerate(head):
+                if i >= len(values):
+                    break
+                m = re.match(r"^\s*([\d.]+)", values[i])
+                if not m:
+                    continue
+                for key, rx in NUTRIENT_HEADERS.items():
+                    if key not in out and rx.search(label):
+                        v = float(m.group(1))
+                        out[key] = int(round(v)) if key == "calories" else round(v, 1)
+        if out:
+            break
+    return out
+
+
 def parse_detail_page(html: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
     text = soup.get_text(" ")
     out = parse_nutrition(text)
+    for key, value in parse_nutrition_table(soup).items():
+        out.setdefault(key, value)
     price = None
     for el in soup.select("[class*='price']"):
         price = parse_price(el.get_text(" "))
