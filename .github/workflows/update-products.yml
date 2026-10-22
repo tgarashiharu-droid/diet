@@ -1,31 +1,30 @@
 name: 商品データ更新
 
+# 一時的な調査用(ファミマ詳細ページの構造確認)。調査後に元に戻す
 on:
-  schedule:
-    - cron: "17 18 * * 1"  # 毎週火曜 3:17 JST(新商品は火曜発売が多いため)
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  update:
+  debug:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r scripts/requirements.txt
-      - run: python scripts/fetch_products.py
-      - name: 変更があればコミット
+      - name: ファミマ詳細ページの構造を出力
         run: |
-          if git diff --quiet -- data/products.json && git ls-files --error-unmatch data/products.json >/dev/null 2>&1; then
-            echo "変更なし"; exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/products.json
-          git commit -m "商品データを更新 ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
-          git push
+          cat > inspect.py <<'PY'
+          import re, sys
+          s = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+          for kw in ['kcal', '熱量', 'エネルギー', 'たんぱく', '栄養', 'nutrition']:
+              for m in list(re.finditer(kw, s))[:2]:
+                  print('---', kw, m.start())
+                  print(s[max(0, m.start() - 500):m.start() + 500])
+          print('--- scripts/api')
+          print(set(re.findall(r'(?:src|href)="([^"]+\.(?:js|json)[^"]*)"', s)))
+          print(set(re.findall(r'["\'](/[^"\']*(?:api|json|nutri)[^"\']*)["\']', s, re.I)))
+          PY
+          salad=$(curl -sA "Mozilla/5.0" https://www.family.co.jp/goods/salad.html | grep -o 'goods/salad/[0-9]*\.html' | head -1)
+          for u in https://www.family.co.jp/goods/omusubi/0411493.html "https://www.family.co.jp/$salad"; do
+            echo "=== $u"
+            curl -sA "Mozilla/5.0" "$u" -o page.html
+            wc -c page.html
+            python3 inspect.py page.html
+          done
