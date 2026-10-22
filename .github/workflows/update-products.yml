@@ -1,31 +1,27 @@
 name: 商品データ更新
 
+# 一時的な調査用(ファミマ栄養成分の取得元確認)。調査後に元に戻す
 on:
-  schedule:
-    - cron: "17 18 * * 1"  # 毎週火曜 3:17 JST(新商品は火曜発売が多いため)
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  update:
+  debug:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r scripts/requirements.txt
-      - run: python scripts/fetch_products.py
-      - name: 変更があればコミット
+      - name: ファミマの栄養成分の取得元を調べる
         run: |
-          if git diff --quiet -- data/products.json && git ls-files --error-unmatch data/products.json >/dev/null 2>&1; then
-            echo "変更なし"; exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/products.json
-          git commit -m "商品データを更新 ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
-          git push
+          UA="Mozilla/5.0"
+          curl -sA "$UA" https://www.family.co.jp/goods/omusubi/0411493.html -o page.html
+          echo "=== #agn 付近"
+          python3 -c "
+          s=open('page.html',encoding='utf-8').read()
+          i=s.find('id=\"agn\"'); print(s[i-200:i+3000])
+          i=s.find('item_nutritional_info'); print('nutri idx',i)
+          import re; print(set(re.findall(r'data-[\w-]+=\"[^\"]{0,120}\"', s))) "
+          echo "=== goods_detail.js"
+          curl -sA "$UA" https://www.family.co.jp/etc/designs/family/component/js/goods_detail.js -o gd.js
+          wc -c gd.js
+          grep -n -i -E "ajax|\.json|url|fetch|getJSON|agn|nutri|kcal|safety" gd.js | head -80
+          echo "=== function.js"
+          curl -sA "$UA" https://www.family.co.jp/etc/designs/family/component/js/function.js -o fn.js
+          grep -n -i -E "agn|nutri|kcal|safety|getJSON|\.json" fn.js | head -40
