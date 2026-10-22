@@ -8,20 +8,22 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-      - name: ファミマの栄養成分の取得元を調べる
+      - name: ファミマのアレルゲン・栄養成分ページを調べる
         run: |
           UA="Mozilla/5.0"
-          curl -sA "$UA" https://www.family.co.jp/goods/omusubi/0411493.html -o page.html
-          echo "=== #agn 付近"
-          python3 -c "
-          s=open('page.html',encoding='utf-8').read()
-          i=s.find('id=\"agn\"'); print(s[i-200:i+3000])
-          i=s.find('item_nutritional_info'); print('nutri idx',i)
-          import re; print(set(re.findall(r'data-[\w-]+=\"[^\"]{0,120}\"', s))) "
-          echo "=== goods_detail.js"
-          curl -sA "$UA" https://www.family.co.jp/etc/designs/family/component/js/goods_detail.js -o gd.js
-          wc -c gd.js
-          grep -n -i -E "ajax|\.json|url|fetch|getJSON|agn|nutri|kcal|safety" gd.js | head -80
-          echo "=== function.js"
-          curl -sA "$UA" https://www.family.co.jp/etc/designs/family/component/js/function.js -o fn.js
-          grep -n -i -E "agn|nutri|kcal|safety|getJSON|\.json" fn.js | head -40
+          curl -sA "$UA" https://www.family.co.jp/goods/safety.html -o safety.html
+          wc -c safety.html
+          echo "=== safety.html 内のリンク"
+          grep -o 'href="[^"]*safety[^"]*"' safety.html | sort -u | head -60
+          echo "=== goods080.html"
+          curl -sA "$UA" https://www.family.co.jp/goods/safety/goods080.html -o g80.html
+          wc -c g80.html
+          python3 - <<'PY'
+          import re
+          s = open('g80.html', encoding='utf-8', errors='replace').read()
+          for kw in ['kcal', '熱量', '0411493', 'おむすび', '.json', '.csv', '.pdf', 'xlsx']:
+              idx = [m.start() for m in re.finditer(re.escape(kw), s)]
+              print('---', kw, len(idx))
+              for i in idx[:2]:
+                  print(s[max(0, i - 400):i + 600])
+          PY
