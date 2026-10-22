@@ -163,6 +163,8 @@
     display:flex; justify-content:space-between; align-items:center; font-size: 17px; font-weight:700;
     border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 8px 0; margin: 12px 0 10px;
   }
+  .price-note{ font-size:10px; color: var(--ink-soft); text-align:right; margin: 2px 0 10px; line-height:1.5; }
+  .r-item .unverified{ color: var(--stamp); margin-left:1px; }
   .r-tip{
     font-family:'Noto Sans JP',sans-serif; font-size:12px; line-height:1.6;
     background:rgba(0,0,0,0.03); border-radius:8px; padding:10px 12px;
@@ -307,6 +309,12 @@ const PROFILE = {
 };
 
 const RATIO = { protein: 0.20, fat: 0.25, carb: 0.55 };
+
+// scripts/fetch_products.py が公式サイトから取得した商品データ(価格・栄養成分)
+// 読み込めない場合(file:// で開いた等)は従来どおりAIの推定値を使う
+const PRODUCTS_URL = "data/products.json";
+const CATALOG_PROMPT_LIMIT = 180;
+let productCatalog = null;
 const MEAL_SLOTS = ["朝食", "昼食", "夕食"];
 
 let selectedStore = "セブン-イレブン";
@@ -523,6 +531,86 @@ function buildAdvice(targets, mealSlot){
   return { headline, body };
 }
 
+async function loadProductCatalog(){
+  try{
+    const res = await fetch(PRODUCTS_URL, { cache: 'no-cache' });
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data && data.stores) productCatalog = data.stores;
+  }catch(e){
+    console.warn('商品データを読み込めませんでした', e);
+  }
+}
+
+function catalogFor(store){
+  const c = productCatalog && productCatalog[store];
+  return (c && c.items && c.items.length) ? c : null;
+}
+
+function normalizeProductName(name){
+  return String(name || '').normalize('NFKC').replace(/[\s・()\[\]「」【】『』〈〉<>、,.。~〜-]/g, '').toLowerCase();
+}
+
+function findCatalogItem(catalog, name){
+  const key = normalizeProductName(name);
+  if(!key) return null;
+  let hit = catalog.items.find(p => normalizeProductName(p.name) === key);
+  if(hit || key.length < 4) return hit || null;
+  // 部分一致は一番名前の長さが近いものを採用
+  const partial = catalog.items.filter(p => {
+    const k = normalizeProductName(p.name);
+    return k.includes(key) || key.includes(k);
+  });
+  partial.sort((a, b) => Math.abs(a.name.length - name.length) - Math.abs(b.name.length - name.length));
+  return partial[0] || null;
+}
+
+function buildCatalogPrompt(catalog, priceLimit){
+  const items = catalog.items
+    .filter(p => p.price <= priceLimit)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, CATALOG_PROMPT_LIMIT);
+  const fmt = v => (v === null || v === undefined) ? '?' : v;
+  const lines = items.map(p =>
+    `${p.name}|${p.price}|${fmt(p.calories)}|${fmt(p.protein)}|${fmt(p.fat)}|${fmt(p.carbs)}`);
+  return `
+
+【公式サイトの最新商品リスト(${catalog.updatedAt.slice(0, 10)}時点、税込価格)】
+形式: 商品名|価格|kcal|P|F|C (?は不明)
+${lines.join('\n')}
+
+- 商品は必ず上のリストから選び、"name"にはリストの商品名をそのまま書くこと
+- price・栄養成分はリストの値をそのまま使うこと(?の項目のみ推定してよい)`;
+}
+
+// AIの回答を公式データで上書きし、合計を計算し直す
+function applyCatalog(plan, catalog){
+  let matched = 0;
+  plan.items = plan.items.map(item => {
+    const hit = findCatalogItem(catalog, item.name);
+    if(!hit) return { ...item, verified: false };
+    matched++;
+    const pick = (official, guessed) => (official === null || official === undefined) ? guessed : official;
+    return {
+      name: hit.name,
+      price: hit.price,
+      calories: pick(hit.calories, item.calories),
+      protein: pick(hit.protein, item.protein),
+      fat: pick(hit.fat, item.fat),
+      carbs: pick(hit.carbs, item.carbs),
+      url: hit.url,
+      verified: true
+    };
+  });
+  const sum = key => Math.round(plan.items.reduce((acc, i) => acc + (Number(i[key]) || 0), 0) * 10) / 10;
+  plan.totalPrice = sum('price');
+  plan.totalCalories = Math.round(sum('calories'));
+  plan.totalProtein = sum('protein');
+  plan.totalFat = sum('fat');
+  plan.totalCarbs = sum('carbs');
+  return { matched, total: plan.items.length, updatedAt: catalog.updatedAt.slice(0, 10) };
+}
+
 function resolveStore(){
   if(selectedStore === '__other__'){
     const v = freeStoreInput.value.trim();
@@ -560,6 +648,9 @@ async function generatePlan(){
     ? `- 店舗: あなたが選んでください。日本全国に店舗が多いチェーン(コンビニ3社、松屋、すき家、吉野家、やよい軒、大戸屋、サイゼリヤ、ガスト、はなまるうどん、いきなりステーキ、Subwayなど)の中から、この時間帯・予算・PFC目標に一番合うお店を1つ選び、"store"フィールドにその店名を入れること`
     : `- 店舗: ${store}(この店の実在しそうな商品・メニューのみを使う。他店のものは使わない)`;
 
+  const catalog = isOmakase ? null : catalogFor(store);
+  const catalogInstruction = catalog ? buildCatalogPrompt(catalog, priceLimit) : '';
+
   const moodInstruction = selectedMood ? `\n- 気分: ${selectedMood}(この気分に合うメニューを優先する)` : '';
 
   const prompt = `あなたは日本の飲食チェーン・コンビニのメニューに詳しい栄養アドバイザーです。ダイエット中の人のための1食分の食事プランを提案してください。
@@ -575,7 +666,7 @@ ${storeInstruction}
 - 予算: ${priceLimit}円以内(必ず守る)
 - この食事の目安カロリー: 1日の残り目安を踏まえて${Math.round(remainingKcal / (selectedSlot === '夕食' ? 1 : 2.2))}kcal前後を目安にするが、予算内で無理なく組める範囲でよい
 - 高タンパクを意識し、白米は使わない(定食チェーンの場合はご飯を玄米・もち麦に変更できる店ならその選択を明記、できない店ならご飯少なめ・ご飯抜きなどの工夫を提案)
-- 価格は思い出しで概算せず、可能な範囲でWeb検索して実際の相場に近い金額を確認してから使うこと(それでも多少のズレは許容範囲とする)
+- 価格は思い出しで概算せず、可能な範囲でWeb検索して実際の相場に近い金額を確認してから使うこと(それでも多少のズレは許容範囲とする)${catalogInstruction}
 
 以下のJSON形式のみで回答してください。前置き・説明・Markdown装飾は一切不要です。
 
@@ -602,6 +693,7 @@ ${storeInstruction}
     if (!data.success) throw new Error(data.error || '不明なエラー');
 
     const plan = extractJson(data.text);
+    const priceCheck = catalog ? applyCatalog(plan, catalog) : null;
 
     const entry = {
       store: plan.store || (isOmakase ? 'おまかせ' : store),
@@ -617,6 +709,7 @@ ${storeInstruction}
       totalFat: plan.totalFat,
       totalCarbs: plan.totalCarbs,
       tip: plan.tip,
+      priceCheck: priceCheck,
       priceLimit: priceLimit,
       dailyTargets: targets
     };
@@ -635,6 +728,13 @@ ${storeInstruction}
   }finally{
     genBtn.disabled = false;
   }
+}
+
+function priceCheckHtml(check){
+  if(!check) return '<div class="price-note">※価格・栄養成分はAIによる推定値です</div>';
+  const unverified = check.total - check.matched;
+  return `<div class="price-note">※価格は公式サイト ${check.updatedAt} 時点の税込価格` +
+    (unverified ? `(*の${unverified}品は公式データに見つからず推定値)` : '') + `</div>`;
 }
 
 function renderReceipt(entry, mealSlot){
@@ -660,7 +760,7 @@ function renderReceipt(entry, mealSlot){
           <div class="r-item">
             <span class="name">${i.name}</span>
             <span class="dots"></span>
-            <span class="price">¥${i.price}</span>
+            <span class="price">¥${i.price}${entry.priceCheck && !i.verified ? '<span class="unverified">*</span>' : ''}</span>
           </div>
         `).join('')}
         <div class="pfc-row">
@@ -670,6 +770,7 @@ function renderReceipt(entry, mealSlot){
           <div class="pfc-item"><div class="val">${entry.totalCarbs}g</div><div class="lbl">C 炭水化物</div></div>
         </div>
         <div class="r-total"><span>合計金額</span><span>¥${entry.totalPrice}</span></div>
+        ${priceCheckHtml(entry.priceCheck)}
         <div class="r-tip"><b>この食事について:</b> ${entry.tip}</div>
         <div class="advice-box">
           <span class="advice-head">${advice.headline}</span>
@@ -711,6 +812,7 @@ clearBtn.addEventListener('click', () => {
 genBtn.addEventListener('click', generatePlan);
 
 loadTodayLog();
+loadProductCatalog();
 </script>
 </body>
 </html>
